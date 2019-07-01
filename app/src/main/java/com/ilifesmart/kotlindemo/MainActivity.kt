@@ -1,13 +1,22 @@
 package com.ilifesmart.kotlindemo
 
+import android.content.Context
+import android.net.wifi.WifiManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.ilifesmart.model.Person
 import com.ilifesmart.model.PersonBean
 import com.ilifesmart.model.PersonBean2
 import com.ilifesmart.model.RectAngle
+import com.ilifesmart.strings.join
+import com.ilifesmart.strings.joinToString
+import com.ilifesmart.strings.lastChar
+import com.ilifesmart.strings.maxInt
 import java.lang.Exception
 import java.lang.IllegalArgumentException
+import java.lang.NumberFormatException
+import java.lang.StringBuilder
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -80,9 +89,70 @@ class MainActivity : AppCompatActivity() {
 
         // 闭区间
         for(i in 1..10) {
-            println("item index: $i")
+            println("index: $i")
         }
-        
+
+        // 开区间
+        for(i in 1 until 10) { // == in 1..9
+            println("until index: $i")
+        }
+
+        // 自定义步进值
+        for(i in 100 downTo 1 step 1 ) {
+            println("item index: $i"+ "type: " + fizzBuzz(i))
+        }
+
+        // map
+        var binaryMap = TreeMap<Char, String>()
+        for (c in 'A'..'F') {
+            val binary = Integer.toBinaryString(c.toInt())
+            // binaryMap.put(c, binary)
+            binaryMap[c] = binary
+        }
+
+        for ((letter, binary) in binaryMap) {
+            println("binaryMap key:$letter, value:$binary")
+        }
+
+        println("binaryMap: $binaryMap")
+
+        // List
+        val list = arrayListOf<Int>(1,2,3,4)
+        for((index, element) in list.withIndex()) {
+            println("list index:$index,element:$element")
+        }
+
+        // in区间判断
+        println("in_region " + ("Kotlin" in "Java".."Scala"))
+        println("in_region " + ("kotlin" in "Java".."Scala"))
+        println("in_region " + ("Kotlin" in setOf<String>("Java", "Scala", "Kotlin")))
+
+        // try-catch-finally
+        try {
+            val line = "not number"
+            Integer.parseInt(line)
+        } catch (e:NumberFormatException) {
+            println("$e")
+        } finally {
+            println("end")
+        }
+
+        transferInt("not number")
+        transferInt("256")
+
+        chapter3()
+        chapter4()
+    }
+
+    fun transferInt(i: String):Int? {
+        val result = try {
+            Integer.parseInt(i)
+        } catch (e: NumberFormatException) {
+            null
+        }
+
+        println("transferInt result $result")
+        return result
     }
 
     fun max(a:Int, b:Int): Int {
@@ -153,9 +223,115 @@ class MainActivity : AppCompatActivity() {
             throw IllegalArgumentException("unknown expression")
         }
 
-    fun eval3(e: Expr): Int =when(e) {
+    fun eval3(e: Expr): Int = when(e) {
         is Num -> e.value
         is Sum -> eval3(e.left) + eval3(e.right)
         else -> throw IllegalArgumentException("unknown expression.")
     }
+
+    fun eval4(e: Expr): Int = when(e) {
+        is Num -> e.value
+        is Sum -> eval3(e.left) + eval3(e.right)
+        else -> throw IllegalArgumentException("unknown expression.")
+    }
+
+    fun fizzBuzz(i: Int) = when {
+        i % 3 == 0 -> "Pizz"
+        i % 5 == 0 -> "Buzz"
+        i % 15 ==0 -> "PizzBuzz"
+        else -> "$i"
+    }
+
+    /* ------------------- chapter3 ------------------- */
+    fun chapter3() {
+        val strings = listOf<String>("first", "second", "third")
+        println("strings last:${strings.last()} class:" +strings.javaClass )
+
+        val numbers = setOf<Int>(1,2,3,4)
+        println("numbers max:${numbers.max()} class:" + numbers.javaClass)
+
+        val list = listOf(1, 2, 3, 4)
+        var result = joinToString(list, "{ ", ", ", " }")
+        println("result1 $result")
+
+        // 显示表明参数名称
+        result = joinToString(list, prefix = "{ ", separator = ", ", postfix = " }")
+        println("result2 $result")
+
+        // 显示表明参数名称，无序。
+        result = joinToString(list, postfix = "{ ", separator = ", ", prefix = " }")
+        println("result3 $result")
+
+        println("max: ${maxInt(1,2)}")
+
+        // 扩展函数
+        println("Kotlin".lastChar())
+
+        println("扩展函数: "+listOf("one","two","three").join(" "))
+
+        val builder = StringBuilder("Kotlin?")
+        builder.lastChar = '!' // setter函数调用
+        println("StringBuilder $builder")
+
+        // 正则表达式
+        println("12.345-6.A".split(".", "-"))
+        println("12.345-6.A".split("\\.|-".toRegex()))
+
+        var path = "/Users/wuzh/kotlin/chapter.doc"
+        var prefix = path.substringBeforeLast("/")
+        var last   = path.substringAfterLast("/")
+        var file   = last.substringBeforeLast(".")
+        var category   = last.substringAfterLast(".")
+
+        println("lists: ${listOf(path, prefix, last, file, category)}")
+
+        // 三重引号的字符串(正则表达式放在三重引号的字符串中，其中字符不需转义\.而不是\\.)
+        val regex = """(.+)/(.+)\.(.+)""".toRegex()
+        val matchResult = regex.matchEntire(path)
+        if (matchResult != null) {
+            val (dictory, filename, extension) = matchResult.destructured
+            println("lists: $dictory, $filename, $extension")
+        }
+
+    }
+
+    /* ------------------- chapter4(对象与接口) ------------------- */
+    fun chapter4() {
+        Button().click()
+        Button().AHaHaHa()
+    }
+
+    interface clickable {
+        fun click()
+        fun AHaHaHa() {
+            println("Hahahahahhaha~")
+        }
+        fun BHaHaHa() {
+            println("Hahahahahhaha~")
+        }
+    }
+
+    interface focusable {
+        fun AHaHaHa() {
+            println("Hahahahahhaha~")
+        }
+
+        fun focus()
+    }
+
+    class Button: clickable, focusable {
+        override fun click() {
+            println("啦啦啦德玛西亚")
+        }
+
+        override fun focus() {
+            println("focusable")
+        }
+
+        override fun AHaHaHa() {
+            super<clickable>.AHaHaHa() //super<clickable> 基类的名字放在尖括号中
+            super<focusable>.AHaHaHa()
+        }
+    }
+
 }
