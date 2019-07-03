@@ -1,9 +1,21 @@
 package com.ilifesmart.kotlindemo
 
 import android.content.Context
+import android.location.Address
 import android.net.wifi.WifiManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
+import android.widget.TextView
+import androidx.core.database.DatabaseUtilsCompat
+import com.ilifesmart.chapter5.Person2
+import com.ilifesmart.java.Button
+import com.ilifesmart.kotlin.Button2
+import com.ilifesmart.kotlin.Expr2
+import com.ilifesmart.kotlin_class.Client
+import com.ilifesmart.kotlin_class.LengthCounter
+import com.ilifesmart.kotlin_class.Payroll
+import com.ilifesmart.kotlin_interface.AddressUser
 import com.ilifesmart.model.Person
 import com.ilifesmart.model.PersonBean
 import com.ilifesmart.model.PersonBean2
@@ -34,10 +46,17 @@ class MainActivity : AppCompatActivity() {
         fun rgb() = (r*256 + g) * 256 + b // 定义枚举常量的方法
     }
 
+    lateinit var text:TextView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        text = findViewById(R.id.hello)
+        text.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View?) {
+                println("TextView is clicked.")
+            }
+        })
         val a = 1
         val b: Int = 2
         val c = a+b;
@@ -142,6 +161,7 @@ class MainActivity : AppCompatActivity() {
 
         chapter3()
         chapter4()
+        chapter5()
     }
 
     fun transferInt(i: String):Int? {
@@ -299,6 +319,39 @@ class MainActivity : AppCompatActivity() {
     fun chapter4() {
         Button().click()
         Button().AHaHaHa()
+
+        println("=======================")
+
+        com.ilifesmart.java.Button().getCurrentState()
+        com.ilifesmart.kotlin.Button2().getCurrentState()
+//        TextCanvas().print()
+        val result = Expr2.eval(Expr2.Sum(Expr2.Sum(Expr2.Num(1), Expr2.Num(2)), Expr2.Num(3)))
+        println("sealed Expr2 result: $result")
+
+        val user = AddressUser("wuzhenghua")
+        println("user.address ${user.address}")
+        user.address = "杭州"
+        println("user.address ${user.address}")
+        println("user: $user")
+
+        val counter = LengthCounter()
+        counter.addWord("Hello,World!")
+        println("LengthCounter.length: ${counter.counter}")
+
+        val client = Client("杭州-滨江", 310052)
+        println("client: $client")
+
+        // 单例
+        for (i in 1..10) {
+            Payroll.allEmployees.add(com.ilifesmart.kotlin_class.Person("item:"+i, i+0.5))
+        }
+
+        println("Sum:${Payroll.calculateSalary()}")
+
+        // 伴生对象
+        val person = com.ilifesmart.kotlin_class.Person.fromJSON("")
+        println("person.name:${person.name}")
+
     }
 
     interface clickable {
@@ -316,16 +369,19 @@ class MainActivity : AppCompatActivity() {
             println("Hahahahahhaha~")
         }
 
-        fun focus()
+        fun setFocus(b: Boolean)
     }
 
+    // 默认是final，不可被继承
     class Button: clickable, focusable {
+        var focusAble = false
+
         override fun click() {
             println("啦啦啦德玛西亚")
         }
 
-        override fun focus() {
-            println("focusable")
+        override fun setFocus(b: Boolean) {
+            focusAble = b
         }
 
         override fun AHaHaHa() {
@@ -334,4 +390,192 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // open:允许创建子类
+    open class Button2: clickable, focusable {
+        var focusAble = false
+
+        override fun click() {
+            println("啦啦啦德玛西亚")
+        }
+
+        override fun setFocus(b: Boolean) {
+            focusAble = b
+        }
+
+        override fun AHaHaHa() {
+            super<clickable>.AHaHaHa() //super<clickable> 基类的名字放在尖括号中
+            super<focusable>.AHaHaHa()
+        }
+    }
+
+    // 抽象成员不是默认open，但可以标记open
+    abstract interface Canvas {
+        abstract fun onDraw()
+
+        open fun stopAnimation() {
+
+        }
+
+        fun animateTwice() {
+
+        }
+    }
+
+    // 可见性修饰符: private(类中可见),protected(子类中可见),public(所有地方可见),internal(模块内可见) 【def:public】
+    internal class TextCanvas: Canvas {
+        override fun onDraw() {
+            println("TextCanvas：--")
+        }
+
+        internal fun debug() {
+            println("debug..")
+        }
+
+        private fun debug2() {
+            println("debug2..")
+        }
+    }
+
+// Kotlin禁止调用低可见性的类型
+//    fun TextCanvas.print() {
+//        debug() //
+//        onDraw()
+//    }
+
+    fun chapter5() {
+        var TAG = "Chapter5"
+        val people = listOf(com.ilifesmart.chapter5.Person2("Jack", 28), com.ilifesmart.chapter5.Person2("Tom", 27))
+        println("$TAG Max:${people.maxBy { it.age }}") // 如果上下文期望的是只有一个参数且其类型可以推断出来，就可以使用it
+        println("$TAG Max:${people.maxBy(com.ilifesmart.chapter5.Person2::age)}") // 同上
+
+        var names = people.joinToString(separator = " ", transform = {p:com.ilifesmart.chapter5.Person2 -> p.name})
+        names = people.joinToString(separator = " "){p:com.ilifesmart.chapter5.Person2 -> p.name} // 显示标出类型
+        names = people.joinToString(separator = " "){p -> p.name} // 上下文推导
+        println("$TAG Names: $names")
+
+        // lambda
+        println("$TAG Max: ${people.maxBy { p:com.ilifesmart.chapter5.Person2 -> p.age }}")
+
+        val sum = {x:Int,y:Int -> x+y}
+        println("$TAG sum(2,1): ${sum(2,1)}")
+        run {println("$TAG 42:"+ 42)} // 运行lambda中的代码
+
+        fun printMessageWithPrefix(message: Collection<String>, prefix: String) {
+            var count = 0 // 貌似其过程就是创建一个对象，然后修改对象的变量值.
+            message.forEach {
+                println("$TAG $prefix $it") // it:即上下文中推断出的变量声明.
+                count++
+            }
+            println("$TAG count: $count")
+        }
+        printMessageWithPrefix(listOf("Tom", "Jack", "TomJ", "Hello", "TomJack"), "HAHA")
+
+        fun salute() = println("$TAG Salute")
+        run(::salute) //引用顶层函数 (不是类的成员)
+
+        val createPerson = ::Person2 // 构造方法的引用
+        val person = createPerson("wuzh", 28)
+        println("$TAG person: $person")
+
+        val predicate = person::isAdult // 引用扩展函数
+        println("$TAG isAdult: ${predicate()}")
+
+        val age = person::age
+        println("$TAG age:${age()}") // 获取年龄
+
+        // lambda： filter  map
+        val beans = listOf(Person2("1", 10), Person2("2", 10), Person2("3", 12), Person2("4", 13), Person2("5", 14), Person2("6", 26), Person2("7", 28))
+        println("$TAG names(age>12):${beans.filter { it.age>12 }.map { it.name }}")
+        println("$TAG names:${beans.map(Person2::name)}")
+        println("$TAG ages:${beans.map(Person2::age)}")
+        println("$TAG age>11:${beans.filter { it.age > 11}}")
+
+        // 对于HashMap filterKeys/filterValues
+        // all, any, find, findOrNull, count
+        val canBeInClub27 = {p:Person2 -> p.age <= 27}
+        println("$TAG all matches: ${beans.all(canBeInClub27)}") // 所有元素是否满足表达式
+        println("$TAG any matches: ${beans.any(canBeInClub27)}") // 至少一个元素是否满足表达式
+        println("$TAG any matches count: ${beans.count(canBeInClub27)}") // 至少一个元素是否满足表达式
+
+        // groupBy
+        val rtn = beans.groupBy { it.age }   // : Map<Int, List<Person2>>
+        println("$TAG rtn(groupByAge):$rtn") // rtn(groupByAge):{10=[Person2(name=1, age=10), Person2(name=2, age=10)], 12=[Person2(name=3, age=12)], 13=[Person2(name=4, age=13)], 14=[Person2(name=5, age=14)], 26=[Person2(name=6, age=26)], 28=[Person2(name=7, age=28)]}
+
+        // flatMap
+        val strings = listOf("abc", "def", "abcdefghijk")
+        println("$TAG strings.list:${strings.flatMap { it.toList() }}")          // [a, b, c, d, e, f, a, b, c, d, e, f, g, h, i, j, k]
+        println("$TAG strings.list:${strings.flatMap { it.toList() }.toSet()}")  // [a, b, c, d, e, f, g, h, i, j, k]
+
+        // 懒惰序列(避免filter和map结果后新建的临时列表)
+        println("$TAG sequence:${beans.asSequence().filter(canBeInClub27).toSet()}") // [Person2(name=1, age=10), Person2(name=2, age=10), Person2(name=3, age=12), Person2(name=4, age=13), Person2(name=5, age=14), Person2(name=6, age=26)]
+        println("$TAG sequence:${beans.asSequence().filter(canBeInClub27)}")         // kotlin.sequences.FilteringSequence@7bf7895
+
+        // 惰性集合操作
+        println("toList:")
+        listOf(5,6,7,8).asSequence().map { print(" $TAG map($it)"); it*it }.filter { print(":filter($it)"); it % 2 == 0 }.toList()
+        println("nonToList:")
+        listOf(1,2,3,4).asSequence().map { print(" $TAG map($it)"); it*it }.filter { print(":filter($it)"); it % 2 == 0 }
+        println("endOfSequence")
+
+        // 创建序列
+        val natureNumbers = generateSequence(0) {it+1}
+        val numberTo100 = natureNumbers.takeWhile { it <= 100 }
+        println("$TAG 1+2+3+..+100=${numberTo100.sum()}") // 获取结果时，中间操作才开始执行.
+
+        // lambda独特功能: with & apply
+
+        // 此处多次使用result
+        fun alphabet1(): String {
+            val result = StringBuilder()
+            for(letter in 'A'..'Z') {
+                result.append(letter)
+            }
+
+            result.append("\nNow i know the alphabet!")
+            return result.toString()
+        }
+
+        // lambda with
+        fun alphabet2(): String {
+            val result = StringBuilder()
+            return with(result) {
+                for(letter in 'A'..'Z') {
+                    append(letter)
+                }
+                this.append("\nNow i know alphabet!")
+                toString()
+            }
+        }
+
+        val person3 = Person2("wuzh", 30)
+        fun alphabet3() = with(StringBuilder()) {
+            for(letter in 'A'..'Z') {
+                append(letter)
+            }
+            this.append("\nNow i know alphabet!")
+            // this@MainActivity.toString(): 引用外部应用的toString.
+            toString() // 返回值，若返回值是接收者对象，则使用apply
+        }
+
+        fun alphabet4() = StringBuilder().apply {
+            for(letter in 'A'..'Z') {
+                append(letter)
+            }
+            this.append("\nNow i know alphabet!")
+        }.toString()
+
+        // buildString:创建StringBuilder并调用toString()
+        fun alphabet5() = buildString {
+            for(letter in 'A'..'Z') {
+                append(letter)
+            }
+            this.append("\nNow i know alphabet!")
+        }
+
+        println("$TAG alphabet1:${alphabet1()}")
+        println("$TAG alphabet2:${alphabet2()}")
+        println("$TAG alphabet3:${alphabet3()}")
+        println("$TAG alphabet4:${alphabet4()}")
+        println("$TAG alphabet5:${alphabet5()}")
+    }
 }
