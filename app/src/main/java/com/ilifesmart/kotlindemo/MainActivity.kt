@@ -1,16 +1,10 @@
 package com.ilifesmart.kotlindemo
 
-import android.content.Context
-import android.location.Address
-import android.net.wifi.WifiManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
-import androidx.core.database.DatabaseUtilsCompat
 import com.ilifesmart.chapter5.Person2
-import com.ilifesmart.java.Button
-import com.ilifesmart.kotlin.Button2
 import com.ilifesmart.kotlin.Expr2
 import com.ilifesmart.kotlin_class.Client
 import com.ilifesmart.kotlin_class.LengthCounter
@@ -24,8 +18,10 @@ import com.ilifesmart.strings.join
 import com.ilifesmart.strings.joinToString
 import com.ilifesmart.strings.lastChar
 import com.ilifesmart.strings.maxInt
+import java.lang.AssertionError
 import java.lang.Exception
 import java.lang.IllegalArgumentException
+import java.lang.NullPointerException
 import java.lang.NumberFormatException
 import java.lang.StringBuilder
 import java.util.*
@@ -162,6 +158,7 @@ class MainActivity : AppCompatActivity() {
         chapter3()
         chapter4()
         chapter5()
+        chapter6()
     }
 
     fun transferInt(i: String):Int? {
@@ -577,5 +574,181 @@ class MainActivity : AppCompatActivity() {
         println("$TAG alphabet3:${alphabet3()}")
         println("$TAG alphabet4:${alphabet4()}")
         println("$TAG alphabet5:${alphabet5()}")
+    }
+
+    fun chapter6() {
+        val TAG = "Chapter6"
+        fun getStringLength(s: String): Int = s.length
+        fun getStringLength(s: String?): Int = if (s!= null) s.length else 0
+        fun getStringLength2_0(s: String?): Int? = s?.length
+        fun getStringLength3_0(s: String?): Int = s?.length ?: 0
+
+        println("$TAG Hello.length: ${getStringLength("Hello")}")
+        println("$TAG null.length: ${getStringLength(null)}")
+        println("$TAG Hello.length(2.0): ${getStringLength2_0("Hello")}")
+        println("$TAG null.length(2.0): ${getStringLength2_0(null)}")
+        println("$TAG Hello.length(3.0): ${getStringLength3_0("Hello")}")
+        println("$TAG null.length(3.0): ${getStringLength3_0(null)}")
+
+        fun managerName(employee: Employee): String? = employee.manager?.name
+        val ceo = Employee("Tom Boss", null)
+        val cto = Employee("Jack Willson", ceo)
+
+        println("$TAG ceo.manager ${managerName(ceo)}")
+        println("$TAG cto.manager ${managerName(cto)}")
+
+        fun CompanyPerson.countryName(): String {
+            val country = this.company?.address?.country
+            return if (country != null) country else "unKnown Area"
+        }
+
+        fun CompanyPerson.countryName2_0(): String {
+            val country = this.company?.address?.country
+            return country ?: "unKnown Area"
+        }
+
+        fun CompanyPerson.countryName3_0() = this.company?.address?.country ?: "unKnown Area"
+
+        // ? ?:
+        fun printShippingLabel(person: CompanyPerson) {
+            val address = person.company?.address ?: throw IllegalArgumentException("$TAG No Address")
+            with(address) {
+                println("$TAG $streetAddress")
+                print(" $zipCode $city $country")
+            }
+        }
+
+        val person = CompanyPerson("wuzh", null)
+        println("$TAG wuzh.country ${person.countryName()}")
+        println("$TAG wuzh.country(2.0) ${person.countryName2_0()}")
+        println("$TAG wuzh.country(3.0) ${person.countryName3_0()}")
+        try {
+            print("$TAG Label:${printShippingLabel(person)}")
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+
+        // !!
+        fun ignoreNulls(s:String?) {
+            val sNotNull = s!!
+            println("$TAG length:${sNotNull.length}")
+        }
+
+        try {
+            ignoreNulls(null)
+        } catch (ex:NullPointerException) {
+            ex.printStackTrace() // NullPointerException
+        }
+
+        // let
+        fun sendEmailTo(email: String?) {
+            println("$TAG sendEmailTo: $email")
+        }
+
+        var email = "351563763@qq.com"
+        email?.let { email -> sendEmailTo(email) }
+
+        val email2 = null
+        email2?.let { sendEmailTo(it) }
+
+        fun getBestPersonInTheWorld(): CompanyPerson? = null
+        fun getBestPersonInTheWorld2(): CompanyPerson? = CompanyPerson("Jack", null)
+        getBestPersonInTheWorld()?.let { println("$TAG ${it.name}: The Best Man in the world!") }
+        getBestPersonInTheWorld2()?.let { println("$TAG ${it.name}: The Best Man in the world!") }
+
+        println("$TAG -------------------------- end_of_let --------------------------")
+
+        val test = MyServiceDemo()
+        try {
+            test.testAction()
+            test.setUp()
+            test.testAction()
+        } catch (ex:Exception) {
+            ex.printStackTrace()
+        }
+
+        // 可空类型的扩展
+        fun verifyUserInput(input: String?) {
+            if (input.isNullOrBlank()) {
+                println("$TAG Please fill in the required fields.")
+            }
+        }
+
+        verifyUserInput(null)
+
+        val answer:Any = 42
+        val i = 1
+        val j:Long = 1.toLong() // 数字转换必须是显示转换
+        "42".toInt()
+        "42".toIntOrNull()
+
+        val list = listOf<Int?>(1,2,3,null,4,5,6)
+        println("$TAG listWithNull:$list")
+        println("$TAG listFilterNull:${list.filterNotNull()}") // 返回值类型为:List<T>
+
+
+        val arrays = arrayOf(1,2,3,4,5,6)
+
+        for (i in arrays.indices) {
+            println("$TAG [index:$i,value:${arrays[i]}]")
+        }
+
+        val alphabets = Array<String>(26) {('a'+it).toString()}
+        println("$TAG alphabets:${alphabets.joinToString("")}")
+        println("$TAG arrays:${arrays.joinToString(", ","[","]")}")
+
+        val strings = listOf("a", "b", "c")
+        println("$TAG %s/%s/%s".format(*strings.toTypedArray())) //
+
+        val int_1 = IntArray(5)
+        val int_2 = intArrayOf(1,2,3,4,5)
+        val int_3 = IntArray(5) {(it+1)*(it+1)}
+
+        println("$TAG int_1(def):    ${int_1.joinToString(", ", "[", "]")}")
+        println("$TAG int_2(factory):${int_2.joinToString(", ", "[", "]")}")
+        println("$TAG int_3(lambda): ${int_3.joinToString(", ", "[", "]")}")
+
+        Array<String>(5) {"item-"+(1+it)}.forEachIndexed { index, s -> println("$TAG index:$index,content: $s") }
+
+    }
+
+    class Employee(val name: String, val manager: Employee?)
+
+    class Address(val streetAddress:String, val zipCode:Int, val city:String, val country: String)
+
+    class Company(val name:String, val address: Address?)
+
+    class CompanyPerson(val name: String, val company: Company?) {
+        override fun equals(o: Any?): Boolean {
+            val other = o as? CompanyPerson ?: return false // 如果不为CompangPerson类型则返回false.
+            return super.equals(other)
+        }
+    }
+
+    class MyService {
+        fun performAction(): String = "foo"
+    }
+
+    class MyServiceDemo {
+        lateinit var service:MyService
+
+        fun setUp() {
+            service = MyService()
+        }
+
+        fun testAction() {
+            println("Chapter6 ${service.performAction()}")
+        }
+    }
+
+    interface Processor<T> {
+        fun progress(): T
+    }
+
+    // Unit : Kotlin中的void
+    class NoResultProcessor: Processor<Unit> {
+        override fun progress() {
+            // 此时就不需要书写返回值. 比Java优雅~
+        }
     }
 }
