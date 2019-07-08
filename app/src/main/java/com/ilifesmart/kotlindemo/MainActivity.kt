@@ -1,10 +1,13 @@
 package com.ilifesmart.kotlindemo
 
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import com.ilifesmart.chapter5.Person2
+import com.ilifesmart.chapter7.MutablePoint
+import com.ilifesmart.chapter7.Point
 import com.ilifesmart.kotlin.Expr2
 import com.ilifesmart.kotlin_class.Client
 import com.ilifesmart.kotlin_class.LengthCounter
@@ -18,13 +21,17 @@ import com.ilifesmart.strings.join
 import com.ilifesmart.strings.joinToString
 import com.ilifesmart.strings.lastChar
 import com.ilifesmart.strings.maxInt
+import java.beans.PropertyChangeListener
+import java.beans.PropertyChangeSupport
 import java.lang.AssertionError
 import java.lang.Exception
 import java.lang.IllegalArgumentException
 import java.lang.NullPointerException
 import java.lang.NumberFormatException
 import java.lang.StringBuilder
+import java.time.LocalDate
 import java.util.*
+import kotlin.reflect.KProperty
 
 class MainActivity : AppCompatActivity() {
 
@@ -159,6 +166,8 @@ class MainActivity : AppCompatActivity() {
         chapter4()
         chapter5()
         chapter6()
+        chapter7()
+        chapter8()
     }
 
     fun transferInt(i: String):Int? {
@@ -751,4 +760,298 @@ class MainActivity : AppCompatActivity() {
             // 此时就不需要书写返回值. 比Java优雅~
         }
     }
+
+    fun chapter7() {
+        val TAG = "Chapter7"
+
+        val list = arrayListOf(1,2,3,4,5)
+        list += 6
+        println("$TAG elements:${list.joinToString(", ", "[", "]")}")
+        println("$TAG 6 is in list: ${6 in list}")
+
+        val wperson = com.ilifesmart.chapter7.Person("wu", "zh")
+        val xperson = com.ilifesmart.chapter7.Person("xiao", "yl")
+
+        println("$TAG (wperson < xperson): ${wperson < xperson}")
+
+        val point = Point(10, 20)
+        println("$TAG [x:${point[0]},y:${point[1]}]")
+
+        val enpoint = MutablePoint(10, 20)
+        enpoint[0] = 50
+        enpoint[1] = 100
+        println("$TAG enpoint:$enpoint")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val now = LocalDate.now()
+            val vacation = now..now.plusDays(10)
+            println("$TAG isInVacation:" + (now.plusWeeks(1) in vacation))
+        }
+
+        (0..10).forEach { println("$TAG index:$it") }
+
+        for(c in "abc") {
+            println("$TAG chacter:$c")
+        }
+
+        fun splitFilename(fullName: String): NameComponents {
+//            val result = fullName.split('.', limit = 2) // 忽略已经有默认值的参数声明.
+//            return NameComponents(result[0], result[1])
+            val (name,extension) = fullName.split('.', limit = 2)
+            return NameComponents(name, extension)
+        }
+
+        val (name, ext) = splitFilename("kotlin.kt")
+        println("$TAG [name:$name,ext:$ext]")
+
+        fun printEntries(map: Map<String, String>) {
+            for((key,value) in map) {
+                println("$TAG $key -> $value")
+            }
+        }
+
+        val map = mapOf("Orcale" to "Java", "JetBrains" to  "kotlin")
+        printEntries(map)
+
+        val bean8 = Person8("wuzhenghua")
+        bean8.emails
+
+        Person8_v2_0("xiaoyuling").emails
+
+        val bean = PersonBean("xiaoyul", 27, 16000)
+        bean.addPropertyChangeListener(PropertyChangeListener { event -> println("$TAG Property ${event.propertyName} changed. from ${event.oldValue} to ${event.newValue}") })
+        bean.age = 18
+        bean.salary = 40000
+
+        val bean2 = PersonBean2_0("xiaoyul", 27, 16000)
+        bean2.addPropertyChangeListener(PropertyChangeListener { event -> println("$TAG Property ${event.propertyName} changed. from ${event.oldValue} to ${event.newValue}") })
+        bean2.age = 18
+        bean2.salary = 40000
+
+        val bean3 = PersonBean3_0("tianshiJ", 17, 4000000)
+        bean3.addPropertyChangeListener(PropertyChangeListener { event -> println("$TAG Property ${event.propertyName} changed. from ${event.oldValue} to ${event.newValue}") })
+        bean3.age = 18
+        bean3.salary = 1800000
+
+        // map实现了getValue, MutableMap实现了setValue。因此可直接委托.
+    }
+
+    data class NameComponents(val name: String, val extension: String)
+
+    class Email(val email: String)
+
+    class Person8(val name: String) {
+        fun loadEmails(person: Person8): List<Email> {
+            println("Chapter7 Load emails for ${person.name}")
+            return listOf(Email(person.name+"@qq.com"))
+        }
+
+        private var _emails: List<Email>? = null
+        val emails: List<Email>
+        get() {
+            if (_emails == null) {
+                _emails = loadEmails(this)
+            }
+            return _emails!!
+        }
+    }
+
+    class Person8_v2_0(val name: String) {
+        fun loadEmails(person: Person8_v2_0): List<Email> {
+            println("Chapter7 Load emails for ${person.name+"@qq.com"}")
+            return listOf(Email(person.name+"@qq.com"))
+        }
+
+        val emails by lazy { loadEmails(this) }
+    }
+
+    open class PropertyChangeAware {
+        fun PropertyChangeAware() {}
+
+        protected val changeSupport = PropertyChangeSupport(this)
+
+        fun addPropertyChangeListener(listener: PropertyChangeListener) {
+            changeSupport.addPropertyChangeListener(listener)
+        }
+
+        fun removePropertyChangeListener(listener: PropertyChangeListener) {
+            changeSupport.removePropertyChangeListener(listener)
+        }
+    }
+
+    class PersonBean(val name: String, var _age:Int, var _salary: Int): PropertyChangeAware() {
+        var age:Int = _age
+        set(value) {
+            val oldValue = field
+            field = value
+            changeSupport.firePropertyChange("age", oldValue, value)
+        }
+
+        var salary:Int = _salary
+            set(value) {
+                val oldValue = field
+                field = value
+                changeSupport.firePropertyChange("salary", oldValue, value)
+            }
+    }
+
+    class PersonBean2_0(val name: String, var _age:Int, var _salary: Int): PropertyChangeAware() {
+        var __age = observableProperty("age", _age, changeSupport)
+        var age: Int
+            get() = __age.getValue()
+            set(value) { __age.setValue(value)}
+
+        var __salary = observableProperty("salary", _salary, changeSupport)
+        var salary:Int
+            get() = __salary.getValue()
+            set(value) {__salary.setValue(value)}
+    }
+
+    // 委托属性未签名版
+    class observableProperty(
+        val propName: String, var propValue: Int,
+        val changeSupport: PropertyChangeSupport
+    ) {
+        fun getValue(): Int = propValue
+        fun setValue(newValue: Int) {
+            val oldValue = propValue
+            propValue = newValue
+            changeSupport.firePropertyChange(propName, oldValue, newValue)
+        }
+    }
+
+    /* 委托属性签名版(解释版)
+     *
+     * operator:重载
+     * p:接收属性的实例，用来设置或读取.
+     * prop: 表示属性本身，属性类型为KProperty.访问名称 prop.name
+     * 委托属性需定义s/getValue()函数
+     *
+     */
+    class observableProperty2_0(
+        var propValue: Int,
+        val changeSupport: PropertyChangeSupport
+    ) {
+        operator fun getValue(p: PersonBean3_0, prop: KProperty<*>): Int = propValue
+        operator fun setValue(p: PersonBean3_0, prop: KProperty<*>, newValue: Int) {
+            val oldValue = propValue
+            propValue = newValue
+            changeSupport.firePropertyChange(prop.name, oldValue, newValue)
+        }
+    }
+
+    /* 实例版
+     *
+     * p:    接收属性的实例，用来设置或读取.
+     * by:   委托
+     * prop: 表示属性本身，属性类型为KProperty.访问名称 prop.name
+     *
+     */
+    class PersonBean3_0(val name: String, var _age:Int, var _salary: Int): PropertyChangeAware() {
+        var age:Int by observableProperty2_0(_age, changeSupport)
+        var salary:Int by observableProperty2_0(_salary, changeSupport)
+    }
+
+    fun chapter8() {
+        val TAG = "Chapter8"
+
+        val list = listOf(1,2,3,4,5,6)
+        list.filter { it%2 == 0 }
+        println("$TAG list:${list.joinToString(", ", "[", "]")}")
+
+        val sum = { x:Int, y:Int -> x + y }
+        val action = { println(42) }
+
+        // 编译器推导
+        // 高阶函数声明
+        val sum2: (Int, Int) -> Int = { x,y -> x + y }
+        val action2: () -> Unit = { println(42) }
+
+        // （Int，String）-> Unit    ():内为参数类型,->后为返回值类型
+
+        fun twoAndThree(operation: (Int, Int) -> Int) {
+            val result = operation(2,3)
+            println("$TAG the result is $result")
+        }
+
+        val str = "Hello"
+        println("$TAG newStr: ${str.filter { it in 'a'..'m' }}")
+
+        twoAndThree { a, b -> a+b }
+        twoAndThree { a, b -> a*a + b*b }
+
+        fun getShippingCostCalculator(delivery:Delivery): (Order) -> Double {
+            if (delivery == Delivery.STANDARD) {
+                return { 6+2.1*it.intemCount} // 返回表达式为lambda，参数Order，返回值Double
+            } else {
+                return { order -> 1.2 * order.intemCount }
+            }
+        }
+
+        val calculator = getShippingCostCalculator((Delivery.STANDARD))
+        println("$TAG Shipping costs ${calculator(Order(3))}")
+
+
+        val contacts = listOf(ContactBean("Dmitry", "Jemerov", "123-4567"), ContactBean("wu", "zh", null))
+        val filters = ContactListFilters()
+        with(filters) { // with会调用lambda块
+            prefix = "Dm"
+            onlyWithPhoneNumber = true
+        }
+
+        println("$TAG ${contacts.filter(filters.getPredicate())}")
+
+        val printFunC = { c:Int -> println("$TAG ${c + 26}")}
+        val printFunC2 = { t:Int -> println("$TAG 22222 ${t+26}") }
+        fun transfer(): (t:Int) -> Unit {
+            return {println("$TAG transfer22222: ${it+26}")}
+        }
+        printFunC(20)
+        printFunC2(20)
+        val tranfsda = transfer()
+        tranfsda(20)
+    }
+
+    fun <T> Collection<T>.joinToString(
+        separator: String = ", ",
+        prefix: String = "",
+        postfix:String = "",
+        transform: ((T) ->String)?
+    ): String {
+        val result = StringBuilder()
+        for((index, element) in this.withIndex()) {
+            if (index > 0) result.append(separator)
+            val str = transform?.invoke(element) ?: element.toString() // 调用函数的invoke方法.
+            result.append(str)
+        }
+        result.append(postfix)
+        return result.toString()
+    }
+
+    // 返回函数的例子
+    enum class Delivery {STANDARD, EXPEDITED}
+    class Order(val intemCount: Int)
+
+    class ContactListFilters {
+        var prefix: String = ""
+        var onlyWithPhoneNumber: Boolean = false
+
+        fun getPredicate(): (ContactBean) -> Boolean {
+            val startWithPrefix = { p:ContactBean -> p.firstName.startsWith(prefix) || p.lastName.startsWith(prefix)} // 类似本地方法了...
+
+            if (!onlyWithPhoneNumber) {
+                return startWithPrefix
+            }
+
+            return {
+                startWithPrefix(it) && it.phoneNumber != null
+            }
+        }
+    }
+
+    data class ContactBean(
+        val firstName: String,
+        val lastName: String,
+        val phoneNumber: String?
+    )
 }
