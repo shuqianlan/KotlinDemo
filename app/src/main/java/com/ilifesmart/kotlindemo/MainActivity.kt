@@ -1,13 +1,20 @@
 package com.ilifesmart.kotlindemo
 
+import android.app.Activity
+import android.app.Service
+import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.system.Os
 import android.view.View
 import android.widget.TextView
 import com.ilifesmart.chapter5.Person2
 import com.ilifesmart.chapter7.MutablePoint
 import com.ilifesmart.chapter7.Point
+import com.ilifesmart.jkid.deserialization.deserialize
+import com.ilifesmart.jkid.serialization.serialize
 import com.ilifesmart.kotlin.Expr2
 import com.ilifesmart.kotlin_class.Client
 import com.ilifesmart.kotlin_class.LengthCounter
@@ -23,6 +30,8 @@ import com.ilifesmart.strings.lastChar
 import com.ilifesmart.strings.maxInt
 import java.beans.PropertyChangeListener
 import java.beans.PropertyChangeSupport
+import java.io.BufferedReader
+import java.io.FileReader
 import java.lang.AssertionError
 import java.lang.Exception
 import java.lang.IllegalArgumentException
@@ -31,7 +40,15 @@ import java.lang.NumberFormatException
 import java.lang.StringBuilder
 import java.time.LocalDate
 import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.Condition
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.memberProperties
 
 class MainActivity : AppCompatActivity() {
 
@@ -57,7 +74,7 @@ class MainActivity : AppCompatActivity() {
         text = findViewById(R.id.hello)
         text.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
-                println("TextView is clicked.")
+                startActivity<DetailActivity>()
             }
         })
         val a = 1
@@ -168,6 +185,8 @@ class MainActivity : AppCompatActivity() {
         chapter6()
         chapter7()
         chapter8()
+        chapter9()
+        chapter10()
     }
 
     fun transferInt(i: String):Int? {
@@ -1010,6 +1029,129 @@ class MainActivity : AppCompatActivity() {
         printFunC2(20)
         val tranfsda = transfer()
         tranfsda(20)
+
+        val log = listOf(
+            SiteVisit("/", 20, OS.WINDOWS),
+            SiteVisit("/user/", 10, OS.LINUX),
+            SiteVisit("/login", 1, OS.MAC),
+            SiteVisit("/login/oauth", 1, OS.MAC),
+            SiteVisit("/home/usermgmt", 1, OS.MAC)
+        )
+
+        log.filter { true }.map(SiteVisit::duration)
+        fun List<SiteVisit>.averageDuration(os: OS): Double {
+            return log.asSequence().filter { os == it.os }.map(SiteVisit::duration).average()
+        }
+
+        fun List<SiteVisit>.averageDuration2(predicate: (SiteVisit)->Boolean): Double {
+            return filter(predicate).map(SiteVisit::duration).average()
+        }
+
+        val averageWINDOWSDuration = log.filter { it.os == OS.WINDOWS }.map(SiteVisit::duration).average()
+        println("$TAG averageWINDOWSDuration: $averageWINDOWSDuration")
+        val averageWINDOWSDuration2 = log.averageDuration(OS.MAC)
+        println("$TAG averageDuration2: $averageWINDOWSDuration2")
+
+        // 类似Java的函数形参传递.
+        val averageInOSDuration3 = log.averageDuration2() {
+            it.os in setOf(OS.MAC, OS.WINDOWS, OS.LINUX, OS.ANDROID)
+        }
+
+        println("$TAG averageInOSDuration3: $averageInOSDuration3")
+
+        fun foo(l: Lock) {
+            println("$TAG Before sync")
+            synchronized(l) {
+                println("$TAG action")
+            }
+            println("$TAG after sync")
+        }
+        val reentrantLock = ReentrantLock()
+        foo(reentrantLock)
+
+        /*
+        * 编译后的foo函数
+        * */
+        fun fooAfter(l: Lock) {
+            println("$TAG Before sync")
+            l.lock()
+            try {
+                println("$TAG action")
+            } finally {
+                l.unlock()
+            }
+            println("$TAG after sync")
+        }
+
+        val lock = ReentrantLock()
+        lock.withLock { // 其内部实现就是此文件中synchronized的内容. 已声明为扩展函数!
+            println("$TAG 测试，线程安全.")
+        }
+
+        fun readFirstLineFromFile(path: String): String {
+            BufferedReader(FileReader(path)).use {
+                return it.readLine() // 先执行lambda
+            }
+        }
+
+        try {
+            val a=null
+            println("$TAG ================ 0")
+        } catch (ex:Exception) {
+          ex.printStackTrace()
+            println("$TAG ================ 1")
+        } finally {
+            println("$TAG ================ 2")
+        }
+
+        val beans = listOf(Person2("xiaoyul", 18), Person2("kotlin", 3), Person2("kotlinJet", 6))
+
+        fun lookForKotlin(b: List<Person2>) {
+            for(bean in b) {
+                println("$TAG name.toLowerCase():${bean.name.toLowerCase()}")
+                if (bean.name.toLowerCase() === "kotlin") {
+                    println("$TAG FOUND!!")
+                    return
+                }
+            }
+        }
+
+        fun lookForKotlin2(n: List<Person2>) {
+            n.forEach {
+                println("$TAG name.toLowerCase():${it.name.toLowerCase()}")
+                if (it.name.toLowerCase() === "kotlin") {
+                    println("$TAG FOUND!!")
+                    return
+                }
+            }
+        }
+
+        fun lookForkotlin3(n: List<Person2>) {
+            n.forEach label@{
+                if (it.name === "kotlin") return@label
+            }
+            println("$TAG kotlin might be somewhere")
+        }
+
+        lookForKotlin(beans)
+        lookForKotlin2(beans)
+        lookForkotlin3(beans)
+
+        val kot = "Kotlin".toLowerCase()
+        println("$TAG ==: ${(kot == "kotlin")}")
+
+        fun lookForAlice(people: List<Person2>) {
+            people.forEach(fun (person) {
+                println("$TAG name:${person.name}")
+                if (person.name === "kotlin") return
+                println("$TAG ${person.name} is not kotlin")
+            })
+        }
+
+        lookForAlice(beans)
+
+        val bean2 = beans.filter(fun (people): Boolean { return people.age > 3 })
+        println("$TAG bean2: $bean2")
     }
 
     fun <T> Collection<T>.joinToString(
@@ -1054,4 +1196,258 @@ class MainActivity : AppCompatActivity() {
         val lastName: String,
         val phoneNumber: String?
     )
+
+    data class SiteVisit (
+        val path: String,
+        val duration: Long,
+        val os: OS
+    )
+
+    enum class OS { WINDOWS, LINUX, MAC, ANDROID}
+
+    // 内联函数
+    inline fun <T> synchronized(lock: Lock, action: () -> T): T {
+        lock.lock()
+        try {
+            return action()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    // 9
+    // 扩展属性
+    val <T> List<T>.penultimate: T?
+    get() = if (size >= 2) this[size-2] else null
+
+    fun chapter9() {
+        val TAG = "Chapter9"
+
+        // 泛型类型参数。编译器可推导或用户标明.
+        // 二者等效.
+        val readers1: MutableList<String> = mutableListOf()
+        val readers2 = mutableListOf<String>()
+
+        val beans = listOf(1,2,3,4,5,6,7,8,9,0)
+        println("$TAG ${beans.slice(1..3)}") // 获取指定位置的元素
+
+        val authors = listOf("kotlin", "java", "swift")
+        val readers = listOf("wuzh", "xiaoyul", "pretty", "swift")
+        val rtn = readers.filter { it !in authors }
+        println("$TAG rtn:$rtn")
+
+        val bs = listOf(1)
+        println("$TAG value1:${beans.penultimate}")
+        println("$TAG value2:${bs.penultimate}")
+
+        println("$TAG listOf(1,2,3,4,5,6).sum:${listOf(1,2,3,4,5,6).sum()}")
+
+        fun <T: Number> oneHalf(value:T): Double = value.toDouble() / 2.0
+        println("$TAG 2/2:${oneHalf(2)}")
+
+        fun <T: Comparable<T>> max(first: T, second: T): T {
+            return if (first > second) first else second
+        }
+        println("$TAG max(swift, kotlin): ${max("swift", "kotlin")}")
+
+        fun <T> ensureTrailingPeriod(seg: T) where T: CharSequence, T: Appendable {
+            if (!seg.endsWith('.')) {
+                seg.append('.')
+            }
+        }
+
+        val halo = StringBuilder("Hello,World")
+        ensureTrailingPeriod(halo)
+        println("$TAG hello:$halo")
+
+        val nullableStringProcessor = Processor2<String?>()
+        nullableStringProcessor.process(null)
+
+        println("$TAG isString: ${isA<String>("123")}")
+        println("$TAG isString: ${isA<String>(123)}")
+
+        val items = listOf("one", 1, "three")
+        val item2 = arrayListOf("one", 1, "three")
+        println("$TAG items(String): ${items.filterIsInstance<String>()}") // "one", "three"
+
+        val serviceImpl = loadService<Service>()
+        println("$TAG className:${serviceImpl.javaClass.name}")
+
+        fun printContents(list: List<Any>) {
+            println("$TAG Contents:${list.joinToString()}")
+        }
+
+        printContents(listOf("wuzh", "Kotlin"))
+        fun addAnswer(list: MutableList<Any>) {
+            list.add(42)
+        }
+
+        val anyComparator = Comparator<Any> { o1, o2 -> o1.hashCode() - o2.hashCode() }
+        val strings = listOf("1", "2", "3")
+        println("$TAG strings:${strings.sortedWith(anyComparator).joinToString()}")
+//        val strings = mutableListOf("kotlin", "js")
+//        addAnswer(strings)
+
+        // 点变型
+        fun <T: R, R> copyData(source: MutableList<T>, destination: MutableList<R>) {
+            for(item in source) {
+                destination.add(item)
+            }
+        }
+
+        fun <T> copyData2_0(source: MutableList<out T>, destination: MutableList<T>) {
+            for(item in source) {
+                destination.add(item)
+            }
+        }
+        val ints = mutableListOf(1,2,3,4)
+        val copyInts = mutableListOf<Any>()
+        val copyInts2 = mutableListOf<Any>()
+        copyData(ints, copyInts)
+        copyData2_0(ints, copyInts2)
+        println("$TAG copyInts:${copyInts.joinToString()}")
+        println("$TAG copyInts2:${copyInts2.joinToString()}")
+
+        // *号投影
+        val list = mutableListOf("wuzh", 1, 123.0)
+        val chars = mutableListOf('a', 'b', 'c')
+        val unknownElements: MutableList<*> = if (Random().nextBoolean()) list else chars //
+        try {
+            //unknownElements.add(42) // 错误:Out-projected type 'MutableList<*>' prohibits the use of 'public abstract fun add(element: E): Boolean defined in kotlin.collections.MutableList'
+        } catch (ex:Exception) {
+            println("$TAG error message:${ex.message}")
+        }
+
+        println("$TAG first element:${unknownElements.first()}")
+
+        println("$TAG isNotEmpty(hello):${DefaultStringValidator.validate("hello")}")
+        println("$TAG is>=0(2):${DefaultIntValidator.validate(2)}")
+
+        val validators = mutableMapOf<KClass<*>, FieldValidator<*>>()
+        validators[String::class] = DefaultStringValidator
+        validators[Int::class] = DefaultIntValidator
+        // 显然不能用validators验证，因为其不知道具体类型.
+        // validators[String::class]!!.validate("ABC")
+
+        val isAccess = (validators[String::class] as FieldValidator<String>)!!.validate("ABC") // 类型限定. (warning)
+        println("$TAG isAccess: $isAccess")
+
+        try {
+            val stringValidator = validators[Int::class] as? FieldValidator<String>
+            println("$TAG Int ========================== 0")
+            val stringValidator2 = validators[Int::class] as? FieldValidator<String>
+            println("$TAG Int ========================== 1")
+//            if (stringValidator == null) println("$TAG none ===== ") else println("$TAG is:${stringValidator.validate("hello")}")
+        } catch (ex:Exception) {
+            ex.printStackTrace()
+            println("$TAG error:${ex.message}")
+        }
+
+        try {
+            val i = 2
+            val instance = (i as? String)
+            println("$TAG isNULL:${instance == null}")
+            instance?.let {
+                println("$TAG ============================== 111")
+            }
+        } catch (ex:Exception) {
+            println("$TAG error:${ex.message}")
+        }
+
+        Validators.registerValidator(String::class, DefaultStringValidator)
+        Validators.registerValidator(Int::class, DefaultIntValidator)
+
+        println("$TAG ::isStringValidator: ${Validators.get(String::class).validate("hello")}")
+        println("$TAG ::isIntValidator: ${Validators.get(Int::class).validate(20)}")
+
+        val validator = try {
+            Validators[Long::class]
+        } catch (ex:Exception) {
+            println("$TAG exception: ${ex.message}")
+            null
+        }
+        println("$TAG ::isLongValidator: ${validator?.validate(20L) ?: "BBBBBBBBB"}") // 若validator为null则打印BBBBBBBBB
+    }
+
+    inline fun <reified T> isA(value: Any) = value is T
+
+    inline fun <reified T: Activity> Activity.startActivity() {
+        val i = Intent(this, T::class.java)
+        startActivity(i)
+    }
+
+    class Processor2<T> {
+        fun process(value: T) {
+            value?.hashCode()
+        }
+    }
+
+    inline fun <reified T> loadService(): ServiceLoader<T> {
+        return ServiceLoader.load(T::class.java)
+    }
+
+    interface FieldValidator<T> {
+        fun validate(input: T): Boolean
+    }
+
+    object DefaultStringValidator: FieldValidator<String> {
+        override fun validate(input: String): Boolean = input.isNotEmpty()
+    }
+
+    object DefaultIntValidator: FieldValidator<Int> {
+        override fun validate(input: Int): Boolean = (input >= 0)
+    }
+
+    // ---------------------------
+    object Validators {
+        // 存储是无类型的
+        private val validators = mutableMapOf<KClass<*>, FieldValidator<*>>()
+
+        // 注册和获取的时候是通过泛型来，就明确了类型.
+        fun <T: Any> registerValidator(kClass: KClass<T>, fieldValidator: FieldValidator<T>) {
+            validators[kClass] = fieldValidator
+        }
+
+//        @Suppress("UNCHECKED_CAST")
+        operator fun <T: Any> get(kClass: KClass<T>):FieldValidator<T> =
+            validators[kClass] as? FieldValidator<T>
+                ?: throw IllegalArgumentException(
+                    "No validator ${kClass.simpleName}"
+                )
+    }
+
+    // 注解与反射.
+    fun chapter10() {
+        val TAG = "Chapter10"
+
+        printDebug1(10) // 支持快速替换
+
+        val person = Person2("Tom", 19)
+        val json = serialize(person)
+        println("$TAG json:$json")
+        println("$TAG object:${deserialize<Person2>(json)}")
+
+        val kClass = person.javaClass.kotlin
+        println("$TAG className:${kClass.simpleName}")
+        kClass.memberProperties.forEach { println("$TAG property:${it.name}") } // 获取属性列表
+
+        fun foo(x: Int) = println("$TAG x:$x")
+
+        val kFunction: Function1<Int,Unit> = ::foo//表示KFunction1<Int,Unit>
+        kFunction.invoke(42)
+
+
+    }
+
+    @Deprecated("use printDebug instead.", ReplaceWith("printDebug(index)"))
+    fun printDebug1(index: Int) {
+        println("Chapter10 天下武功 index:$index")
+    }
+
+    @Suppress("UnCheced")
+    fun printDebug(index: Int) {
+        println("Chapter10 index:$index")
+    }
+
+
 }

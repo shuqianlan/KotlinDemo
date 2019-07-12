@@ -1,5 +1,11 @@
 package com.ilifesmart.chapter5
 
-data class Person2(val name: String, val age: Int) {
+import com.ilifesmart.jkid.JsonExclude
+import com.ilifesmart.jkid.JsonName
+
+data class Person2(
+    @JsonName("_name") val name: String,
+    @JsonExclude val age: Int=0
+) {
     fun isAdult() = age >= 21
 }
